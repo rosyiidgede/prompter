@@ -36,7 +36,7 @@ object PrompterStore {
     var quality by mutableStateOf("FHD")          // UHD | FHD | HD | SD
     var countdown by mutableIntStateOf(3)         // seconds before recording
     var limitSec by mutableIntStateOf(0)          // 0 = no limit
-    var stabilization by mutableStateOf(true)
+    var stabilization by mutableStateOf(false)   // adds preview delay, so off by default
     var mirrorPreview by mutableStateOf(true)     // front camera: show like a mirror
     var grid by mutableStateOf(false)
 
@@ -78,7 +78,7 @@ object PrompterStore {
         quality = p.getString("quality", quality) ?: quality
         countdown = p.getInt("countdown", countdown)
         limitSec = p.getInt("limitSec", limitSec)
-        stabilization = p.getBoolean("stabilization", stabilization)
+        stabilization = p.getBoolean("stab2", stabilization)
         mirrorPreview = p.getBoolean("mirrorPreview", mirrorPreview)
         grid = p.getBoolean("grid", grid)
     }
@@ -121,7 +121,7 @@ object PrompterStore {
             ?.putString("quality", quality)
             ?.putInt("countdown", countdown)
             ?.putInt("limitSec", limitSec)
-            ?.putBoolean("stabilization", stabilization)
+            ?.putBoolean("stab2", stabilization)
             ?.putBoolean("mirrorPreview", mirrorPreview)
             ?.putBoolean("grid", grid)
             ?.apply()

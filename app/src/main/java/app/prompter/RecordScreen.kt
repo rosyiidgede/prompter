@@ -62,7 +62,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -185,7 +184,7 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
     var playing by remember { mutableStateOf(false) }
     var isRecording by remember { mutableStateOf(false) }
     var countdown by remember { mutableIntStateOf(0) }
-    var elapsedMs by remember { mutableLongStateOf(0L) }
+    var elapsedSec by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
     var qualities by remember { mutableStateOf<List<Quality>>(emptyList()) }
     var stabSupported by remember { mutableStateOf(false) }
@@ -201,6 +200,7 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
 
     val previewView = remember {
         PreviewView(context).apply {
+            implementationMode = PreviewView.ImplementationMode.PERFORMANCE
             scaleType = PreviewView.ScaleType.FILL_CENTER
             keepScreenOn = true
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -286,10 +286,13 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                 FileOutputOptions.Builder(File(dir, "$name.mp4")).setDurationLimitMillis(limitMs).build(),
             )
         }
-        elapsedMs = 0L
+        elapsedSec = 0
         state.recording = pending.withAudioEnabled().start(ContextCompat.getMainExecutor(context)) { ev ->
             when (ev) {
-                is VideoRecordEvent.Status -> elapsedMs = ev.recordingStats.recordedDurationNanos / 1_000_000
+                is VideoRecordEvent.Status -> {
+                    val sec = (ev.recordingStats.recordedDurationNanos / 1_000_000_000L).toInt()
+                    if (sec != elapsedSec) elapsedSec = sec
+                }
                 is VideoRecordEvent.Finalize -> {
                     isRecording = false
                     playing = false
@@ -452,7 +455,7 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
             Column(Modifier.align(Alignment.TopStart).padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 if (isRecording) {
                     Text(
-                        "● ${formatTime(elapsedMs)}" +
+                        "● ${formatTime(elapsedSec * 1000L)}" +
                             if (PrompterStore.limitSec > 0) " / ${formatTime(PrompterStore.limitSec * 1000L)}" else "",
                         color = Color(0xFFFF5252),
                         fontSize = 14.sp,
@@ -539,7 +542,7 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                     }
                     if (stabSupported) {
                         Chip(
-                            "Stabilisasi video: ${if (PrompterStore.stabilization) "On" else "Off"}",
+                            "Stabilisasi: ${if (PrompterStore.stabilization) "On (preview agak tertunda)" else "Off"}",
                             selected = PrompterStore.stabilization,
                             enabled = !isRecording,
                         ) {
