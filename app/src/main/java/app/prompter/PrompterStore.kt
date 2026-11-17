@@ -3,6 +3,7 @@ package app.prompter
 import android.content.Context
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
@@ -30,6 +31,14 @@ object PrompterStore {
     var opacity by mutableFloatStateOf(0.85f)
     var panelDp by mutableFloatStateOf(150f)    // height of the text area in record mode
     var mirror by mutableStateOf(false)
+
+    // camera settings
+    var quality by mutableStateOf("FHD")          // UHD | FHD | HD | SD
+    var countdown by mutableIntStateOf(3)         // seconds before recording
+    var limitSec by mutableIntStateOf(0)          // 0 = no limit
+    var stabilization by mutableStateOf(true)
+    var mirrorPreview by mutableStateOf(true)     // front camera: show like a mirror
+    var grid by mutableStateOf(false)
 
     var script: String
         get() = scripts.firstOrNull { it.id == currentId }?.text ?: ""
@@ -66,6 +75,12 @@ object PrompterStore {
         opacity = p.getFloat("opacity", opacity)
         panelDp = p.getFloat("panelDp", panelDp)
         mirror = p.getBoolean("mirror", mirror)
+        quality = p.getString("quality", quality) ?: quality
+        countdown = p.getInt("countdown", countdown)
+        limitSec = p.getInt("limitSec", limitSec)
+        stabilization = p.getBoolean("stabilization", stabilization)
+        mirrorPreview = p.getBoolean("mirrorPreview", mirrorPreview)
+        grid = p.getBoolean("grid", grid)
     }
 
     fun newScript() {
@@ -89,6 +104,9 @@ object PrompterStore {
 
     fun persist(@Suppress("UNUSED_PARAMETER") context: Context) = save()
 
+    /** Call after changing a camera setting. */
+    fun saveSettings() = save()
+
     private fun save() {
         val arr = JSONArray()
         scripts.forEach { arr.put(JSONObject().put("id", it.id).put("text", it.text)) }
@@ -100,6 +118,12 @@ object PrompterStore {
             ?.putFloat("opacity", opacity)
             ?.putFloat("panelDp", panelDp)
             ?.putBoolean("mirror", mirror)
+            ?.putString("quality", quality)
+            ?.putInt("countdown", countdown)
+            ?.putInt("limitSec", limitSec)
+            ?.putBoolean("stabilization", stabilization)
+            ?.putBoolean("mirrorPreview", mirrorPreview)
+            ?.putBoolean("grid", grid)
             ?.apply()
     }
 }

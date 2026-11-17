@@ -72,8 +72,14 @@ class MainActivity : ComponentActivity() {
                 Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                     var preview by remember { mutableStateOf(false) }
                     var record by remember { mutableStateOf(false) }
-                    if (record) {
-                        RecordScreen(onClose = { record = false })
+                    var gallery by remember { mutableStateOf(false) }
+                    if (gallery) {
+                        GalleryScreen(onClose = { gallery = false })
+                    } else if (record) {
+                        RecordScreen(
+                            onClose = { record = false },
+                            onGallery = { record = false; gallery = true },
+                        )
                     } else if (preview) {
                         PreviewScreen(onClose = { preview = false })
                     } else {
@@ -82,6 +88,7 @@ class MainActivity : ComponentActivity() {
                             onStart = ::startOverlay,
                             onPreview = { preview = true },
                             onRecord = { record = true },
+                            onGallery = { gallery = true },
                         )
                     }
                 }
@@ -118,6 +125,7 @@ private fun HomeScreen(
     onStart: () -> Unit,
     onPreview: () -> Unit,
     onRecord: () -> Unit,
+    onGallery: () -> Unit,
 ) {
     Column(
         Modifier
@@ -235,6 +243,10 @@ private fun HomeScreen(
 
         OutlinedButton(onClick = onStart, modifier = Modifier.fillMaxWidth()) {
             Text("Overlay di atas app kamera lain")
+        }
+
+        OutlinedButton(onClick = onGallery, modifier = Modifier.fillMaxWidth()) {
+            Text("Galeri rekaman")
         }
 
         OutlinedButton(onClick = onPreview, modifier = Modifier.fillMaxWidth()) {
