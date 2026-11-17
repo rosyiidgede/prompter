@@ -23,6 +23,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.DynamicRange
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.video.FallbackStrategy
 import androidx.camera.video.FileOutputOptions
@@ -59,6 +60,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -197,6 +200,19 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
     var expIndex by remember { mutableIntStateOf(0) }
     var focusPos by remember { mutableStateOf<Offset?>(null) }
     var cameraError by remember { mutableStateOf<String?>(null) }
+    var showFilters by remember { mutableStateOf(false) }
+
+    // Filter effect stays bound while recording (strength goes to 0 for "Original") so we never rebind mid-clip.
+    val processor = remember { FilterProcessor() }
+    var filterOn by remember { mutableStateOf(PrompterStore.filterId != "orig") }
+    LaunchedEffect(PrompterStore.filterId, isRecording) {
+        if (PrompterStore.filterId != "orig") filterOn = true else if (!isRecording) filterOn = false
+    }
+    SideEffect {
+        processor.preset = Filters.byId(PrompterStore.filterId)
+        processor.strength = PrompterStore.filterStrength
+    }
+    DisposableEffect(Unit) { onDispose { processor.release() } }
 
     val previewView = remember {
         PreviewView(context).apply {
@@ -207,7 +223,7 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
         }
     }
 
-    DisposableEffect(hasPerms, front, PrompterStore.quality, PrompterStore.stabilization) {
+    DisposableEffect(hasPerms, front, PrompterStore.quality, PrompterStore.stabilization, filterOn) {
         val future = ProcessCameraProvider.getInstance(context)
         if (hasPerms) {
             future.addListener({
@@ -234,7 +250,10 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                         .build()
                     val vc = VideoCapture.withOutput(recorder)
                     provider.unbindAll()
-                    val cam = provider.bindToLifecycle(lifecycleOwner, selector, preview, vc)
+                    val group = UseCaseGroup.Builder().addUseCase(preview).addUseCase(vc)
+                        .apply { if (filterOn) addEffect(FilterEffect(processor.executor, processor)) }
+                        .build()
+                    val cam = provider.bindToLifecycle(lifecycleOwner, selector, group)
                     state.videoCapture = vc
                     state.camera = cam
                     stabSupported = stabilizationSupported(cam)
@@ -494,7 +513,14 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                         PrompterStore.saveSettings()
                     }
                 }
-                Chip("Opsi", selected = showSettings) { showSettings = !showSettings }
+                Chip("Filter", selected = showFilters) {
+                    showFilters = !showFilters
+                    showSettings = false
+                }
+                Chip("Opsi", selected = showSettings) {
+                    showSettings = !showSettings
+                    showFilters = false
+                }
                 Chip("Galeri") {
                     if (isRecording) stopRecording()
                     onGallery()
@@ -559,6 +585,48 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                                 state.camera?.cameraControl?.setExposureCompensationIndex(expIndex)
                             },
                             valueRange = expLower.toFloat()..expUpper.toFloat(),
+                        )
+                    }
+                }
+            }
+
+            if (showFilters) {
+                Column(
+                    Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(start = 12.dp, end = 12.dp, bottom = 120.dp)
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(Color(0xCC000000))
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    listOf("iPhone", "Fujifilm").forEach { group ->
+                        Text(group, color = Color.White, fontSize = 12.sp)
+                        Row(
+                            Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            if (group == "iPhone") {
+                                Chip("Original", selected = PrompterStore.filterId == "orig") {
+                                    PrompterStore.filterId = "orig"
+                                    PrompterStore.saveSettings()
+                                }
+                            }
+                            Filters.all.filter { it.group == group }.forEach { f ->
+                                Chip(f.label, selected = PrompterStore.filterId == f.id) {
+                                    PrompterStore.filterId = f.id
+                                    PrompterStore.saveSettings()
+                                }
+                            }
+                        }
+                    }
+                    if (PrompterStore.filterId != "orig") {
+                        Text("Intensitas: ${(PrompterStore.filterStrength * 100).toInt()}%", color = Color.White, fontSize = 12.sp)
+                        Slider(
+                            value = PrompterStore.filterStrength,
+                            onValueChange = { PrompterStore.filterStrength = it },
+                            onValueChangeFinished = { PrompterStore.saveSettings() },
                         )
                     }
                 }

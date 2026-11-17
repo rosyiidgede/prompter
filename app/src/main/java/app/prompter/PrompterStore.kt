@@ -39,6 +39,8 @@ object PrompterStore {
     var stabilization by mutableStateOf(false)   // adds preview delay, so off by default
     var mirrorPreview by mutableStateOf(true)     // front camera: show like a mirror
     var grid by mutableStateOf(false)
+    var filterId by mutableStateOf("orig")
+    var filterStrength by mutableFloatStateOf(1f)
 
     var script: String
         get() = scripts.firstOrNull { it.id == currentId }?.text ?: ""
@@ -81,6 +83,8 @@ object PrompterStore {
         stabilization = p.getBoolean("stab2", stabilization)
         mirrorPreview = p.getBoolean("mirrorPreview", mirrorPreview)
         grid = p.getBoolean("grid", grid)
+        filterId = p.getString("filterId", filterId) ?: filterId
+        filterStrength = p.getFloat("filterStrength", filterStrength)
     }
 
     fun newScript() {
@@ -124,6 +128,8 @@ object PrompterStore {
             ?.putBoolean("stab2", stabilization)
             ?.putBoolean("mirrorPreview", mirrorPreview)
             ?.putBoolean("grid", grid)
+            ?.putString("filterId", filterId)
+            ?.putFloat("filterStrength", filterStrength)
             ?.apply()
     }
 }
