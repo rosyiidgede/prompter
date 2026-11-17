@@ -3,6 +3,9 @@ package app.prompter
 import android.Manifest
 import android.content.ContentValues
 import android.content.pm.PackageManager
+import android.hardware.camera2.CameraCharacteristics
+import android.hardware.camera2.CameraMetadata
+import android.hardware.camera2.CaptureRequest
 import android.os.Build
 import android.os.Environment
 import android.provider.MediaStore
@@ -12,6 +15,9 @@ import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.camera2.interop.Camera2CameraControl
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.CaptureRequestOptions
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.DynamicRange
@@ -90,6 +96,25 @@ private class RecState {
     var recording: Recording? = null
     var videoCapture: VideoCapture<Recorder>? = null
     var camera: Camera? = null
+}
+
+private fun stabilizationSupported(cam: Camera): Boolean = runCatching {
+    val modes = Camera2CameraInfo.from(cam.cameraInfo)
+        .getCameraCharacteristic(CameraCharacteristics.CONTROL_AVAILABLE_VIDEO_STABILIZATION_MODES)
+    modes?.contains(CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON) == true
+}.getOrDefault(false)
+
+private fun applyStabilization(cam: Camera, on: Boolean) {
+    runCatching {
+        val b = CaptureRequestOptions.Builder()
+        if (on) {
+            b.setCaptureRequestOption(
+                CaptureRequest.CONTROL_VIDEO_STABILIZATION_MODE,
+                CameraMetadata.CONTROL_VIDEO_STABILIZATION_MODE_ON,
+            )
+        }
+        Camera2CameraControl.from(cam.cameraControl).setCaptureRequestOptions(b.build())
+    }
 }
 
 private fun qualityOf(name: String): Quality = when (name) {
@@ -198,7 +223,6 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                     val caps = Recorder.getVideoCapabilities(probe.cameraInfo)
                     val supported = caps.getSupportedQualities(DynamicRange.SDR)
                     qualities = listOf(Quality.UHD, Quality.FHD, Quality.HD, Quality.SD).filter { it in supported }
-                    stabSupported = caps.isStabilizationSupported
 
                     val recorder = Recorder.Builder()
                         .setQualitySelector(
@@ -208,13 +232,13 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
                             ),
                         )
                         .build()
-                    val vc = VideoCapture.Builder(recorder)
-                        .setVideoStabilizationEnabled(PrompterStore.stabilization && stabSupported)
-                        .build()
+                    val vc = VideoCapture.withOutput(recorder)
                     provider.unbindAll()
                     val cam = provider.bindToLifecycle(lifecycleOwner, selector, preview, vc)
                     state.videoCapture = vc
                     state.camera = cam
+                    stabSupported = stabilizationSupported(cam)
+                    applyStabilization(cam, PrompterStore.stabilization && stabSupported)
 
                     hasFlash = cam.cameraInfo.hasFlashUnit()
                     torch = false
