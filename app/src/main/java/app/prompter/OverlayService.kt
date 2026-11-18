@@ -12,6 +12,7 @@ import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -25,6 +26,14 @@ import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+
+/** ComposeView that records raw screen coordinates, which do not shift when the window itself moves. */
+private class TouchComposeView(context: Context, private val onRaw: (Float, Float) -> Unit) : ComposeView(context) {
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        onRaw(ev.rawX, ev.rawY)
+        return super.dispatchTouchEvent(ev)
+    }
+}
 
 class OverlayService : Service() {
 
@@ -46,6 +55,10 @@ class OverlayService : Service() {
     private var view: ComposeView? = null
     private val owner = Owner()
     private var scale by mutableFloatStateOf(0.92f)
+    private var rawX = 0f
+    private var rawY = 0f
+    private var lastX = 0f
+    private var lastY = 0f
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -102,13 +115,20 @@ class OverlayService : Service() {
         }
 
         owner.start()
-        val v = ComposeView(this)
+        val v = TouchComposeView(this) { x, y -> rawX = x; rawY = y }
         v.setViewTreeLifecycleOwner(owner)
         v.setViewTreeSavedStateRegistryOwner(owner)
         v.setContent {
             OverlayContent(
                 scale = scale,
-                onDrag = ::moveBy,
+                onDragStart = { lastX = rawX; lastY = rawY },
+                onDragMove = {
+                    val dx = rawX - lastX
+                    val dy = rawY - lastY
+                    lastX = rawX
+                    lastY = rawY
+                    moveBy(dx, dy)
+                },
                 onZoom = ::zoomBy,
                 onBack = {
                     startActivity(
@@ -126,15 +146,17 @@ class OverlayService : Service() {
     private fun moveBy(dx: Float, dy: Float) {
         val v = view ?: return
         val dm = resources.displayMetrics
-        params.x = (params.x + dx.toInt()).coerceIn(-params.width / 2, dm.widthPixels - params.width / 2)
-        params.y = (params.y + dy.toInt()).coerceIn(0, dm.heightPixels - 100)
+        params.x = (params.x + dx.toInt()).coerceIn(0, maxOf(0, dm.widthPixels - params.width))
+        params.y = (params.y + dy.toInt()).coerceIn(0, maxOf(0, dm.heightPixels - v.height))
         wm.updateViewLayout(v, params)
     }
 
     private fun zoomBy(zoom: Float) {
         val v = view ?: return
         scale = (scale * zoom).coerceIn(0.55f, 1f)
-        params.width = (resources.displayMetrics.widthPixels * scale).toInt()
+        val screenW = resources.displayMetrics.widthPixels
+        params.width = (screenW * scale).toInt()
+        params.x = params.x.coerceIn(0, maxOf(0, screenW - params.width))
         wm.updateViewLayout(v, params)
     }
 

@@ -25,7 +25,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
@@ -36,7 +35,8 @@ import kotlinx.coroutines.launch
 @Composable
 fun OverlayContent(
     scale: Float,
-    onDrag: (Float, Float) -> Unit,
+    onDragStart: () -> Unit,
+    onDragMove: () -> Unit,
     onZoom: (Float) -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
@@ -55,13 +55,13 @@ fun OverlayContent(
         Box(
             Modifier
                 .fillMaxWidth()
-                .height(28.dp)
+                .height(36.dp)
                 .pointerInput(Unit) {
-                    var start = Offset.Zero
                     detectDragGestures(
-                        onDragStart = { start = it },
+                        onDragStart = { onDragStart() },
                         onDrag = { change, _ ->
-                            onDrag(change.position.x - start.x, change.position.y - start.y)
+                            change.consume()
+                            onDragMove()
                         },
                     )
                 },

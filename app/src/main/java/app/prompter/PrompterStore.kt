@@ -28,7 +28,7 @@ object PrompterStore {
 
     var speed by mutableFloatStateOf(45f)       // dp per second
     var fontSize by mutableFloatStateOf(20f)    // sp
-    var opacity by mutableFloatStateOf(0.85f)
+    var opacity by mutableFloatStateOf(0.95f)
     var panelDp by mutableFloatStateOf(150f)    // height of the text area in record mode
     var mirror by mutableStateOf(false)
 
@@ -74,7 +74,7 @@ object PrompterStore {
         currentId = p.getLong("currentId", scripts[0].id).takeIf { id -> scripts.any { it.id == id } } ?: scripts[0].id
         speed = p.getFloat("speed", speed)
         fontSize = p.getFloat("fontSize", fontSize)
-        opacity = p.getFloat("opacity", opacity)
+        opacity = p.getFloat("opacity2", opacity)
         panelDp = p.getFloat("panelDp", panelDp)
         mirror = p.getBoolean("mirror", mirror)
         quality = p.getString("quality", quality) ?: quality
@@ -119,7 +119,7 @@ object PrompterStore {
             ?.putLong("currentId", currentId)
             ?.putFloat("speed", speed)
             ?.putFloat("fontSize", fontSize)
-            ?.putFloat("opacity", opacity)
+            ?.putFloat("opacity2", opacity)
             ?.putFloat("panelDp", panelDp)
             ?.putBoolean("mirror", mirror)
             ?.putString("quality", quality)
