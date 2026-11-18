@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
@@ -35,6 +36,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun OverlayContent(
     scale: Float,
+    topInsetPx: Int,
     onDragStart: () -> Unit,
     onDragMove: () -> Unit,
     onZoom: (Float) -> Unit,
@@ -50,7 +52,8 @@ fun OverlayContent(
         Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 26.dp, bottomEnd = 26.dp))
-            .background(Color.Black.copy(alpha = PrompterStore.opacity)),
+            .background(Color.Black.copy(alpha = PrompterStore.opacity))
+            .padding(top = with(LocalDensity.current) { topInsetPx.toDp() }),
     ) {
         PrompterText(
             scroll = scroll,

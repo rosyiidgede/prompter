@@ -16,6 +16,7 @@ import android.view.MotionEvent
 import android.view.WindowManager
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.ComposeView
 import androidx.lifecycle.Lifecycle
@@ -55,6 +56,8 @@ class OverlayService : Service() {
     private var view: android.view.View? = null
     private val owner = Owner()
     private var scale by mutableFloatStateOf(0.92f)
+    private var topInsetPx by mutableIntStateOf(0)
+    private var cutBottom = 0
     private var rawX = 0f
     private var rawY = 0f
     private var lastX = 0f
@@ -128,6 +131,7 @@ class OverlayService : Service() {
         compose.setContent {
             OverlayContent(
                 scale = scale,
+                topInsetPx = topInsetPx,
                 onDragStart = { lastX = rawX; lastY = rawY },
                 onDragMove = {
                     val dx = rawX - lastX
@@ -167,15 +171,22 @@ class OverlayService : Service() {
         return rects?.filter { it.top <= 2 }?.minByOrNull { kotlin.math.abs(it.centerX() - screenW / 2) }
     }
 
-    /** Centre the window on the camera and put its top edge right under it. */
+    /** Full-width bar at the very top: covers the status bar icons, camera hole inside it, text right below the hole. */
     private fun snapToCamera() {
         val v = view ?: return
         val screenW = resources.displayMetrics.widthPixels
-        val cut = cutoutRect()
-        val cx = cut?.centerX() ?: (screenW / 2)
-        params.x = (cx - params.width / 2).coerceIn(0, maxOf(0, screenW - params.width))
-        params.y = cut?.bottom ?: 0
+        scale = 1f
+        params.width = screenW
+        params.x = 0
+        params.y = 0
+        cutBottom = cutoutRect()?.bottom ?: 0
+        updateInset()
         wm.updateViewLayout(v, params)
+    }
+
+    /** Space reserved above the text so it never sits behind the camera hole. */
+    private fun updateInset() {
+        topInsetPx = maxOf(0, cutBottom - params.y)
     }
 
     private fun moveBy(dx: Float, dy: Float) {
@@ -183,6 +194,7 @@ class OverlayService : Service() {
         val dm = resources.displayMetrics
         params.x = (params.x + dx.toInt()).coerceIn(0, maxOf(0, dm.widthPixels - params.width))
         params.y = (params.y + dy.toInt()).coerceIn(0, maxOf(0, dm.heightPixels - v.height))
+        updateInset()
         wm.updateViewLayout(v, params)
     }
 
