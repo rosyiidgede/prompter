@@ -384,7 +384,12 @@ fun RecordScreen(onClose: () -> Unit, onGallery: () -> Unit) {
             }
         }
     }
-    val cutoutTop = with(LocalDensity.current) { WindowInsets.displayCutout.getTop(this).toDp() }
+    val cutoutTop = with(LocalDensity.current) {
+        val res = context.resources
+        val id = res.getIdentifier("status_bar_height", "dimen", "android")
+        val statusPx = if (id > 0) res.getDimensionPixelSize(id) else 0
+        maxOf(WindowInsets.displayCutout.getTop(this), statusPx).toDp()
+    } + PrompterStore.extraTopDp.dp
 
     BackHandler {
         if (isRecording) stopRecording()

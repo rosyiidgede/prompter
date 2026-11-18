@@ -31,6 +31,7 @@ object PrompterStore {
     var opacity by mutableFloatStateOf(0.95f)
     var panelDp by mutableFloatStateOf(150f)    // height of the text area in record mode
     var mirror by mutableStateOf(false)
+    var extraTopDp by mutableFloatStateOf(0f)   // extra gap between camera hole and text
 
     // camera settings
     var quality by mutableStateOf("FHD")          // UHD | FHD | HD | SD
@@ -77,6 +78,7 @@ object PrompterStore {
         opacity = p.getFloat("opacity2", opacity)
         panelDp = p.getFloat("panelDp", panelDp)
         mirror = p.getBoolean("mirror", mirror)
+        extraTopDp = p.getFloat("extraTopDp", extraTopDp)
         quality = p.getString("quality", quality) ?: quality
         countdown = p.getInt("countdown", countdown)
         limitSec = p.getInt("limitSec", limitSec)
@@ -122,6 +124,7 @@ object PrompterStore {
             ?.putFloat("opacity2", opacity)
             ?.putFloat("panelDp", panelDp)
             ?.putBoolean("mirror", mirror)
+            ?.putFloat("extraTopDp", extraTopDp)
             ?.putString("quality", quality)
             ?.putInt("countdown", countdown)
             ?.putInt("limitSec", limitSec)

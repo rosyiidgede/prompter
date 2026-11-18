@@ -214,6 +214,8 @@ private fun HomeScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
         ) {
+            Text("Jarak teks dari lubang kamera: ${PrompterStore.extraTopDp.toInt()} dp")
+            Slider(PrompterStore.extraTopDp, { PrompterStore.extraTopDp = it }, valueRange = 0f..80f)
             Text("Tinggi area teks (mode rekam): ${PrompterStore.panelDp.toInt()} dp")
             Slider(PrompterStore.panelDp, { PrompterStore.panelDp = it }, valueRange = 90f..320f)
             Text("Kecepatan: %.1fx".format(PrompterStore.speed / 45f))

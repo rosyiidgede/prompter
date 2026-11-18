@@ -53,7 +53,7 @@ fun OverlayContent(
             .fillMaxWidth()
             .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 26.dp, bottomEnd = 26.dp))
             .background(Color.Black.copy(alpha = PrompterStore.opacity))
-            .padding(top = with(LocalDensity.current) { topInsetPx.toDp() }),
+            .padding(top = with(LocalDensity.current) { topInsetPx.toDp() } + PrompterStore.extraTopDp.dp),
     ) {
         PrompterText(
             scroll = scroll,

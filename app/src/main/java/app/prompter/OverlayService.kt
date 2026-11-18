@@ -179,9 +179,16 @@ class OverlayService : Service() {
         params.width = screenW
         params.x = 0
         params.y = 0
-        cutBottom = cutoutRect()?.bottom ?: 0
+        // Some phones (e.g. Poco/MIUI) do not report the cutout: fall back to the status bar height,
+        // which always contains the punch-hole.
+        cutBottom = maxOf(cutoutRect()?.bottom ?: 0, statusBarHeightPx())
         updateInset()
         wm.updateViewLayout(v, params)
+    }
+
+    private fun statusBarHeightPx(): Int {
+        val id = resources.getIdentifier("status_bar_height", "dimen", "android")
+        return if (id > 0) resources.getDimensionPixelSize(id) else 0
     }
 
     /** Space reserved above the text so it never sits behind the camera hole. */
