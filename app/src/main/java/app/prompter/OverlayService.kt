@@ -27,8 +27,8 @@ import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
-/** ComposeView that records raw screen coordinates, which do not shift when the window itself moves. */
-private class TouchComposeView(context: Context, private val onRaw: (Float, Float) -> Unit) : ComposeView(context) {
+/** Wrapper that records raw screen coordinates, which do not shift when the window itself moves. */
+private class RawFrame(context: Context, private val onRaw: (Float, Float) -> Unit) : android.widget.FrameLayout(context) {
     override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
         onRaw(ev.rawX, ev.rawY)
         return super.dispatchTouchEvent(ev)
@@ -121,10 +121,11 @@ class OverlayService : Service() {
         }
 
         owner.start()
-        val v = TouchComposeView(this) { x, y -> rawX = x; rawY = y }
+        val v = RawFrame(this) { x, y -> rawX = x; rawY = y }
         v.setViewTreeLifecycleOwner(owner)
         v.setViewTreeSavedStateRegistryOwner(owner)
-        v.setContent {
+        val compose = ComposeView(this)
+        compose.setContent {
             OverlayContent(
                 scale = scale,
                 onDragStart = { lastX = rawX; lastY = rawY },
@@ -146,6 +147,7 @@ class OverlayService : Service() {
                 onClose = { stopSelf() },
             )
         }
+        v.addView(compose)
         wm.addView(v, params)
         view = v
         v.post { snapToCamera() }
