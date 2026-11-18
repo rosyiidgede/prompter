@@ -52,7 +52,7 @@ class OverlayService : Service() {
 
     private lateinit var wm: WindowManager
     private lateinit var params: WindowManager.LayoutParams
-    private var view: ComposeView? = null
+    private var view: android.view.View? = null
     private val owner = Owner()
     private var scale by mutableFloatStateOf(0.92f)
     private var rawX = 0f
@@ -110,8 +110,14 @@ class OverlayService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+            // Let the window reach the camera cutout area so there is no gap next to the lens.
+            if (Build.VERSION.SDK_INT >= 30) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+            } else if (Build.VERSION.SDK_INT >= 28) {
+                layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
+            }
             x = (screenW - width) / 2
-            y = (48 * resources.displayMetrics.density).toInt()
+            y = 0
         }
 
         owner.start()
@@ -130,6 +136,7 @@ class OverlayService : Service() {
                     moveBy(dx, dy)
                 },
                 onZoom = ::zoomBy,
+                onSnap = ::snapToCamera,
                 onBack = {
                     startActivity(
                         Intent(this, MainActivity::class.java)
@@ -141,6 +148,32 @@ class OverlayService : Service() {
         }
         wm.addView(v, params)
         view = v
+        v.post { snapToCamera() }
+    }
+
+    /** Top-centre cutout (camera hole), if the device reports one. */
+    private fun cutoutRect(): android.graphics.Rect? {
+        val screenW = resources.displayMetrics.widthPixels
+        val rects: List<android.graphics.Rect>? = runCatching {
+            if (Build.VERSION.SDK_INT >= 31) {
+                getSystemService(android.hardware.display.DisplayManager::class.java)
+                    .getDisplay(android.view.Display.DEFAULT_DISPLAY).cutout?.boundingRects
+            } else if (Build.VERSION.SDK_INT >= 28) {
+                view?.rootWindowInsets?.displayCutout?.boundingRects
+            } else null
+        }.getOrNull()
+        return rects?.filter { it.top <= 2 }?.minByOrNull { kotlin.math.abs(it.centerX() - screenW / 2) }
+    }
+
+    /** Centre the window on the camera and put its top edge right under it. */
+    private fun snapToCamera() {
+        val v = view ?: return
+        val screenW = resources.displayMetrics.widthPixels
+        val cut = cutoutRect()
+        val cx = cut?.centerX() ?: (screenW / 2)
+        params.x = (cx - params.width / 2).coerceIn(0, maxOf(0, screenW - params.width))
+        params.y = cut?.bottom ?: 0
+        wm.updateViewLayout(v, params)
     }
 
     private fun moveBy(dx: Float, dy: Float) {

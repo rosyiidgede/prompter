@@ -38,6 +38,7 @@ fun OverlayContent(
     onDragStart: () -> Unit,
     onDragMove: () -> Unit,
     onZoom: (Float) -> Unit,
+    onSnap: () -> Unit,
     onBack: () -> Unit,
     onClose: () -> Unit,
 ) {
@@ -48,34 +49,9 @@ fun OverlayContent(
     Column(
         Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(26.dp))
+            .clip(RoundedCornerShape(topStart = 8.dp, topEnd = 8.dp, bottomStart = 26.dp, bottomEnd = 26.dp))
             .background(Color.Black.copy(alpha = PrompterStore.opacity)),
     ) {
-        // Grabber: drag to move the window.
-        Box(
-            Modifier
-                .fillMaxWidth()
-                .height(36.dp)
-                .pointerInput(Unit) {
-                    detectDragGestures(
-                        onDragStart = { onDragStart() },
-                        onDrag = { change, _ ->
-                            change.consume()
-                            onDragMove()
-                        },
-                    )
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                Modifier
-                    .width(44.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(Color(0x66FFFFFF)),
-            )
-        }
-
         PrompterText(
             scroll = scroll,
             playing = playing,
@@ -114,6 +90,7 @@ fun OverlayContent(
             RoundButton(onClick = { PrompterStore.speed = (PrompterStore.speed + 5f).coerceAtMost(150f) }) {
                 GlyphText("+", 20)
             }
+            RoundButton(onClick = onSnap) { GlyphText("◎") }
             RoundButton(onClick = onBack) { GlyphText("⌂") }
             RoundButton(onClick = onClose) { GlyphText("✕", 14) }
         }
@@ -123,7 +100,32 @@ fun OverlayContent(
             fontSize = 11.sp,
             modifier = Modifier
                 .align(Alignment.CenterHorizontally)
-                .padding(bottom = 8.dp),
+                .padding(bottom = 2.dp),
         )
+        // Grabber at the bottom keeps the text flush with the top edge (next to the camera).
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .height(36.dp)
+                .pointerInput(Unit) {
+                    detectDragGestures(
+                        onDragStart = { onDragStart() },
+                        onDrag = { change, _ ->
+                            change.consume()
+                            onDragMove()
+                        },
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                Modifier
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(Color(0x66FFFFFF)),
+            )
+        }
+
     }
 }
